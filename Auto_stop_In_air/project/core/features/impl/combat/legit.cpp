@@ -134,6 +134,19 @@ namespace
 		return false;
 	}
 
+	[[nodiscard]] bool is_game_window_focused( )
+	{
+		const auto fg_window = ::GetForegroundWindow( );
+		if ( !fg_window )
+		{
+			return false;
+		}
+
+		DWORD fg_pid{};
+		::GetWindowThreadProcessId( fg_window, &fg_pid );
+		return fg_pid != 0 && fg_pid == g::memory.id( );
+	}
+
 	[[nodiscard]] bool semirage_auto_mode_enabled( const settings::combat::group_config& cfg ) noexcept
 	{
 		return !legit_mode_active( ) && cfg.triggerbot.auto_mode;
@@ -897,6 +910,7 @@ namespace features::combat {
 		const auto& cfg = resolve_combat_cfg( ctx.item_def_idx, ctx.weapon_type );
 		constexpr std::uint16_t scout_item_def{ 40 };
 		const auto in_air_autostop_active = cfg.aimbot.in_air_autostop && ctx.item_def_idx == scout_item_def;
+		const auto game_focused = is_game_window_focused( );
 		g_recoil_runtime.suppress_mouse_this_tick = false;
 		if ( !cfg.recoil_control_system.enabled )
 		{
@@ -932,7 +946,7 @@ namespace features::combat {
 		constexpr auto in_air_fall_dead_zone_speed{ 95.0f };
 		const auto passed_fall_dead_zone = is_falling && fall_speed > in_air_fall_dead_zone_speed;
 		const auto legit_autostop_move_ready = is_legit_cfg && cfg.aimbot.autostop && cfg.triggerbot.enabled && pawn && on_ground && speed > 5.0f;
-		if ( on_ground || !cfg.aimbot.autostop || !in_air_autostop_active || is_legit_cfg || ctx.is_reloading || passed_fall_dead_zone || noclip_active )
+		if ( on_ground || !cfg.aimbot.autostop || !in_air_autostop_active || is_legit_cfg || ctx.is_reloading || passed_fall_dead_zone || noclip_active || !game_focused )
 		{
 			this->m_in_air_autostop_latched = false;
 		}
@@ -948,6 +962,7 @@ namespace features::combat {
 			if ( !is_legit_cfg
 				&& cfg.aimbot.autostop
 				&& in_air_autostop_active
+				&& game_focused
 				&& pawn
 				&& !on_ground
 				&& !noclip_active
@@ -1262,6 +1277,7 @@ namespace features::combat {
 		if ( !is_legit_cfg
 			&& cfg.aimbot.autostop
 			&& in_air_autostop_active
+			&& game_focused
 			&& pawn
 			&& !on_ground
 			&& !noclip_active
